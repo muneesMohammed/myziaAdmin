@@ -13,58 +13,68 @@ import { DashboardSummary } from "@/types/dashboard";
 export default function StatusOverview({ summary }: { summary: DashboardSummary }) {
   const cards = [
     {
-      icon: <HiOutlineShoppingCart />,
+      icon: <HiOutlineShoppingCart className="size-5" />,
       title: "Total Orders",
       value: String(summary.total_orders),
+      badgeText: "Lifetime",
       className:
-        "text-orange-600 dark:text-orange-100 bg-orange-100 dark:bg-orange-500",
+        "text-orange-600 dark:text-orange-300 bg-orange-100 dark:bg-orange-950/60 border-orange-200 dark:border-orange-800/40",
     },
     {
-      icon: <HiOutlineRefresh />,
-      title: "Orders Pending",
+      icon: <HiOutlineRefresh className="size-5" />,
+      title: "Pending Orders",
       value: String(summary.pending_orders_count),
+      badgeText: "Requires Action",
       className:
-        "text-teal-600 dark:text-teal-100 bg-teal-100 dark:bg-teal-500",
+        "text-amber-600 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800/40",
     },
     {
-      icon: <BsTruck />,
-      title: "Orders Processing",
+      icon: <BsTruck className="size-5" />,
+      title: "Processing",
       value: String(summary.processing_orders_count),
+      badgeText: "In Fulfillment",
       className:
-        "text-blue-600 dark:text-blue-100 bg-blue-100 dark:bg-blue-500",
+        "text-blue-600 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800/40",
     },
     {
-      icon: <HiOutlineCheck />,
-      title: "Orders Delivered",
+      icon: <HiOutlineCheck className="size-5" />,
+      title: "Completed & Delivered",
       value: String(summary.delivered_orders_count),
+      badgeText: "Fulfilled",
       className:
-        "text-emerald-600 dark:text-emerald-100 bg-emerald-100 dark:bg-emerald-500",
+        "text-emerald-600 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800/40",
     },
   ];
 
   return (
-    <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       {cards.map((card) => (
-        <Card key={card.title}>
-          <CardContent className="flex items-center gap-3 p-0">
-            <div
-              className={cn(
-                "size-12 rounded-full grid place-items-center [&>svg]:size-5",
-                card.className
-              )}
-            >
-              {card.icon}
+        <Card key={card.title} className="rounded-xl border shadow-xs transition-all hover:shadow-md">
+          <CardContent className="flex items-center justify-between p-5">
+            <div className="flex items-center gap-3.5">
+              <div
+                className={cn(
+                  "size-11 rounded-xl border grid place-items-center shrink-0 shadow-2xs",
+                  card.className
+                )}
+              >
+                {card.icon}
+              </div>
+
+              <div className="flex flex-col">
+                <Typography className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                  {card.title}
+                </Typography>
+
+                <Typography className="text-2xl font-bold tracking-tight text-foreground font-mono">
+                  {card.value}
+                </Typography>
+              </div>
             </div>
 
-            <div className="flex flex-col gap-y-1">
-              <Typography className="text-sm text-muted-foreground">
-                {card.title}
-              </Typography>
-
-              <Typography className="text-2xl font-semibold text-popover-foreground">
-                {card.value}
-              </Typography>
-            </div>
+            <span className="text-[10px] font-mono font-medium text-muted-foreground bg-accent px-2 py-0.5 rounded-md hidden lg:inline-block">
+              {card.badgeText}
+            </span>
           </CardContent>
         </Card>
       ))}

@@ -1,23 +1,22 @@
 import Link from "next/link";
-import { ZoomIn, PenSquare, Trash2 } from "lucide-react";
+import { ZoomIn, PenSquare, Trash2, ShoppingBag } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import Typography from "@/components/ui/typography";
 
 import { SheetTooltip } from "@/components/shared/table/TableActionTooltip";
-import { TableActionAlertDialog } from "@/components/shared/table/TableActionAlertDialog";
 import CustomerFormSheet from "../form/CustomerFormSheet";
 import { Customer } from "@/services/customers/types";
 import { SkeletonColumn } from "@/types/skeleton";
 import { TooltipWrapper } from "@/components/shared/table/TableActionTooltip";
 
 import { editCustomer } from "@/actions/customers/editCustomer";
-import { deleteCustomer } from "@/actions/customers/deleteCustomer";
 import { HasPermission } from "@/hooks/use-authorization";
 
 const handleDemoDelete = () => {
@@ -33,40 +32,94 @@ export const getColumns = ({
 }) => {
   const columns: ColumnDef<Customer>[] = [
     {
-      header: "id",
-      cell: ({ row }) => (
-        <Typography className="uppercase">
-          {row.original.id.slice(-4)}
-        </Typography>
-      ),
+      header: "Customer",
+      cell: ({ row }) => {
+        const initials = row.original.name
+          ? row.original.name
+              .split(" ")
+              .map((n) => n[0])
+              .join("")
+              .toUpperCase()
+              .slice(0, 2)
+          : "CU";
+
+        return (
+          <div className="flex items-center gap-3">
+            <Avatar className="h-9 w-9 bg-primary/10 text-primary font-semibold text-xs border border-primary/20">
+              <AvatarFallback className="bg-primary/10 text-primary">{initials}</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col min-w-0">
+              <Typography className="font-semibold text-sm truncate text-foreground">
+                {row.original.name}
+              </Typography>
+              <Typography className="text-xs text-muted-foreground truncate">
+                {row.original.email}
+              </Typography>
+            </div>
+          </div>
+        );
+      },
     },
     {
-      header: "joining date",
-      cell: ({ row }) => format(row.original.created_at, "PP"),
-    },
-    {
-      header: "name",
-      cell: ({ row }) => row.original.name,
-    },
-    {
-      header: "email",
-      cell: ({ row }) => (
-        <Typography className="block max-w-52 xl:max-w-60 truncate">
-          {row.original.email}
-        </Typography>
-      ),
-    },
-    {
-      header: () => <span className="block text-center">phone</span>,
+      header: "Phone",
       id: "phone",
       cell: ({ row }) => (
-        <Typography className="block text-center">
+        <Typography className="text-xs text-muted-foreground font-mono">
           {row.original.phone || "—"}
         </Typography>
       ),
     },
     {
-      header: () => <span className="block text-center">actions</span>,
+      header: "Joined",
+      cell: ({ row }) => (
+        <Typography className="text-xs text-muted-foreground whitespace-nowrap">
+          {row.original.created_at ? format(new Date(row.original.created_at), "MMM dd, yyyy") : "—"}
+        </Typography>
+      ),
+    },
+    {
+      header: () => <span className="block text-center">Orders</span>,
+      id: "total_orders",
+      cell: ({ row }) => {
+        const count = row.original.total_orders ?? 0;
+        return (
+          <div className="flex justify-center">
+            <Badge variant={count > 0 ? "processing" : "secondary"} className="gap-1 font-mono text-xs">
+              <ShoppingBag className="size-3" />
+              {count} {count === 1 ? "order" : "orders"}
+            </Badge>
+          </div>
+        );
+      },
+    },
+    {
+      header: () => <span className="block text-right">Total Spent</span>,
+      id: "total_spent",
+      cell: ({ row }) => {
+        const spent = row.original.total_spent ?? 0;
+        return (
+          <Typography className="block text-right font-semibold text-sm text-foreground font-mono">
+            ${spent.toFixed(2)}
+          </Typography>
+        );
+      },
+    },
+    {
+      header: () => <span className="block text-center">Status</span>,
+      id: "status",
+      cell: ({ row }) => {
+        const isActive = row.original.is_active ?? true;
+        return (
+          <div className="flex justify-center">
+            <Badge variant={isActive ? "success" : "secondary"}>
+              {isActive ? "Active" : "Inactive"}
+            </Badge>
+          </div>
+        );
+      },
+    },
+    {
+      header: () => <span className="block text-center">Actions</span>,
       id: "actions",
       cell: ({ row }) => {
         return (
@@ -76,10 +129,10 @@ export const getColumns = ({
                 size="icon"
                 asChild
                 variant="ghost"
-                className="text-foreground"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
               >
                 <Link href={`/customer-orders/${row.original.id}`}>
-                  <ZoomIn className="size-5" />
+                  <ZoomIn className="size-4" />
                 </Link>
               </Button>
             </TooltipWrapper>
@@ -87,7 +140,7 @@ export const getColumns = ({
             {hasPermission("customers", "canEdit") && (
               <CustomerFormSheet
                 key={row.original.id}
-                title="Update Customers"
+                title="Update Customer"
                 description="Update necessary customer information here"
                 submitButtonText="Update Customer"
                 actionVerb="updated"
@@ -99,7 +152,7 @@ export const getColumns = ({
                 action={(formData) => editCustomer(row.original.id, formData)}
               >
                 <SheetTooltip content="Edit Customer">
-                  <PenSquare className="size-5" />
+                  <PenSquare className="size-4" />
                 </SheetTooltip>
               </CustomerFormSheet>
             )}
@@ -110,23 +163,11 @@ export const getColumns = ({
                   onClick={handleDemoDelete}
                   variant="ghost"
                   size="icon"
-                  className="text-foreground"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                 >
-                  <Trash2 className="size-5" />
+                  <Trash2 className="size-4" />
                 </Button>
               </TooltipWrapper>
-
-              // <TableActionAlertDialog
-              //   title={`Delete ${row.original.name}?`}
-              //   description="This action cannot be undone. This will permanently delete this customer and associated data from the database."
-              //   tooltipContent="Delete Customer"
-              //   actionButtonText="Delete Customer"
-              //   toastSuccessMessage={`Customer "${row.original.name}" deleted successfully!`}
-              //   queryKey="customers"
-              //   action={() => deleteCustomer(row.original.id)}
-              // >
-              //   <Trash2 className="size-5" />
-              // </TableActionAlertDialog>
             )}
           </div>
         );

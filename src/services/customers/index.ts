@@ -21,39 +21,82 @@ export async function fetchCustomers(
     const customersData = res.data;
 
     if (Array.isArray(customersData)) {
+      const totalItems = customersData.length;
+      const totalPages = Math.ceil(totalItems / limit) || 1;
+      const currentPage = page;
+      const nextPage = currentPage < totalPages ? currentPage + 1 : null;
+      const prevPage = currentPage > 1 ? currentPage - 1 : null;
+
       return {
         data: customersData as any,
         pagination: {
-          page,
           limit,
-          total: customersData.length,
-          totalPages: Math.ceil(customersData.length / limit) || 1,
+          current: currentPage,
+          items: totalItems,
+          pages: totalPages,
+          next: nextPage,
+          prev: prevPage,
         },
       };
+    } else if (customersData && Array.isArray(customersData.data)) {
+      return customersData;
     }
   } catch (error) {
     console.warn("[FastAPI] fetchCustomers failed, trying Supabase fallback:", error);
   }
 
   // Fallback to Supabase if backend fails
-  let query = client.from("customers").select("*", { count: "exact" });
+  try {
+    let query = client.from("customers").select("*", { count: "exact" });
 
-  if (search) {
-    query = query.or(
-      `name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`
-    );
+    if (search) {
+      query = query.or(
+        `name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`
+      );
+    }
+
+    query = query.order("created_at", { ascending: false });
+
+    const paginatedCustomers = await queryPaginatedTable<Customer, "customers">({
+      name: "customers",
+      page,
+      limit,
+      query,
+    });
+
+    return paginatedCustomers;
+  } catch (err) {
+    console.warn("Supabase customers table fallback failed, attempting users table fallback:", err);
+    try {
+      let query = (client as any).from("users").select("*", { count: "exact" }).eq("role", "customer");
+      if (search) {
+        query = query.or(
+          `name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`
+        );
+      }
+      query = query.order("created_at", { ascending: false });
+      const paginatedCustomers = await queryPaginatedTable<Customer, any>({
+        name: "customers",
+        page,
+        limit,
+        query,
+      });
+      return paginatedCustomers;
+    } catch (usersErr) {
+      console.error("Failed to fetch customers fallback:", usersErr);
+      return {
+        data: [],
+        pagination: {
+          limit,
+          current: 1,
+          items: 0,
+          pages: 1,
+          next: null,
+          prev: null,
+        },
+      };
+    }
   }
-
-  query = query.order("created_at", { ascending: false });
-
-  const paginatedCustomers = await queryPaginatedTable<Customer, "customers">({
-    name: "customers",
-    page,
-    limit,
-    query,
-  });
-
-  return paginatedCustomers;
 }
 
 export async function fetchCustomerOrders(
@@ -82,33 +125,32 @@ export async function fetchCustomerOrders(
     console.warn("[FastAPI] fetchCustomerOrders failed, trying Supabase fallback:", error);
   }
 
-  const selectQuery = `
-    id,
-    invoice_no,
-    order_time,
-    payment_method,
-    total_amount,
-    status,
-    customers(name, address, phone)
-  `;
+  try {
+    const selectQuery = `
+      id,
+      invoice_no,
+      order_time,
+      payment_method,
+      total_amount,
+      status
+    `;
 
-  const { data, error } = await client
-    .from("orders")
-    .select(selectQuery)
-    .eq("customer_id", id)
-    .order("created_at", { ascending: false });
+    const { data, error } = await (client as any)
+      .from("orders")
+      .select(selectQuery)
+      .eq("customer_id", id)
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error(error.message);
-    throw new Error(`Failed to fetch customer orders: ${error.message}`);
+    if (error) {
+      console.warn("Supabase fetchCustomerOrders failed:", error.message);
+      return { customerOrders: [] };
+    }
+
+    return {
+      customerOrders: (data || []) as CustomerOrder[],
+    };
+  } catch (err) {
+    console.error("Failed to fetch customer orders:", err);
+    return { customerOrders: [] };
   }
-
-  if (!data) {
-    console.error("Failed to fetch customer orders");
-    throw new Error("Failed to fetch customer orders");
-  }
-
-  return {
-    customerOrders: data as CustomerOrder[],
-  };
 }

@@ -4,7 +4,11 @@ import { SBOrder } from "../orders/types";
 
 export type SBCustomer = Database["public"]["Tables"]["customers"]["Row"];
 
-export type Customer = SBCustomer;
+export type Customer = SBCustomer & {
+  total_orders?: number;
+  total_spent?: number;
+  is_active?: boolean;
+};
 
 export interface FetchCustomersParams {
   page?: number;
